@@ -37,11 +37,18 @@ class TestGithubOrgClient(unittest.TestCase):
     @patch('client.get_json')
     def test_public_repos(self, mock_get_json):
         """ more tests on public repos """
-        dic_list = [{"repos_url": "on code"}, {'name': 'on code'}]
+        dic_list = [{
+                "repos_url": "https://good.com",
+                "name": "Bruce"
+            },
+            {
+                'repos_url': "https://bad.com",
+                'name': 'on code'
+                }]
         mock_get_json.return_value = dic_list
         with patch.object(GithubOrgClient, '_public_repos_url',
                           new_callable=PropertyMock) as mock_pub_repo:
-            mock_pub_repo.return_value = "on c"
+            mock_pub_repo.return_value = "https://great.com"
             tes_git = GithubOrgClient('doom')
 
             self.assertEqual(tes_git.repos_payload, dic_list)
