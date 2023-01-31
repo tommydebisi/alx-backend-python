@@ -4,9 +4,11 @@
 """
 import unittest
 from unittest.mock import patch, Mock, PropertyMock
-from parameterized import parameterized, param
+from parameterized import parameterized, parameterized_class
+
 
 GithubOrgClient = __import__('client').GithubOrgClient
+TEST_PAYLOAD = __import__('fixtures').TEST_PAYLOAD
 
 
 class TestGithubOrgClient(unittest.TestCase):
@@ -14,8 +16,8 @@ class TestGithubOrgClient(unittest.TestCase):
         tests the githuborgclient class
     """
     @parameterized.expand([
-            param('google'),
-            param('abc')
+            ('google'),
+            ('abc')
         ])
     @patch('client.get_json')
     def test_org(self, org_name,  mock_get_json):
@@ -56,16 +58,38 @@ class TestGithubOrgClient(unittest.TestCase):
             mock_get_json.assert_called_once()
 
     @parameterized.expand([
-            param({"license": {"key": "my_license"}}, "my_license", True),
-            param({"license": {"key": "other_license"}}, "my_license", False)
+            ({"license": {"key": "my_license"}}, "my_license", True),
+            ({"license": {"key": "other_license"}}, "my_license", False)
         ])
     def test_has_license(self, license, license_key, output):
         """ testing for repos license """
-        mock_git = Mock(spec=GithubOrgClient)
-        mock_git.has_license.return_value = output
+        self.assertEqual(GithubOrgClient.has_license(license,
+                                                     license_key), output)
 
-        test_git = GithubOrgClient('good')
-        self.assertEqual(test_git.has_license(license, license_key), output)
+
+@parameterized_class(('org_payload', 'repos_payload',
+                      'expected_repos', 'apache2_repos'), TEST_PAYLOAD)
+class TestIntegrationGithubOrgClient(unittest.TestCase):
+    """
+        Performing integration tests on GithubOrgClient
+    """
+    @classmethod
+    def setUpClass(cls) -> None:
+        mock_req_get = Mock()
+        mock_req_get.json.return_value = cls.repos_payload
+        cls.get_patcher = patch('requests.get', return_value=mock_req_get)
+        cls.get_patcher.start()
+
+    def test_public_repos(self):
+        """ testing the public repos """
+        test_git = GithubOrgClient(self)
+        self.assertEqual(test_git.org, self.org_payload)
+        self.assertEqual(test_git.public_repos(),
+                         self.expected_repos)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.get_patcher.stop()
 
 
 if __name__ == "__main__":
